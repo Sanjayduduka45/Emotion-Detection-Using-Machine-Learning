@@ -2,13 +2,23 @@ import streamlit as st
 import pickle
 import re
 import string
+import nltk
+
+# ==========================================
+# DOWNLOAD NLTK RESOURCES (STREAMLIT CLOUD)
+# ==========================================
+
+try:
+    nltk.data.find("corpora/stopwords")
+except LookupError:
+    nltk.download("stopwords")
 
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 
-# =========================
+# ==========================================
 # PAGE CONFIG
-# =========================
+# ==========================================
 
 st.set_page_config(
     page_title="EmotionScope",
@@ -16,17 +26,21 @@ st.set_page_config(
     layout="centered"
 )
 
-# =========================
+# ==========================================
 # LOAD FILES
-# =========================
+# ==========================================
 
-model = pickle.load(open("xgb_model.pkl", "rb"))
-tfidf = pickle.load(open("tfidf.pkl", "rb"))
-emotion_map = pickle.load(open("emotions.pkl", "rb"))
+try:
+    model = pickle.load(open("xgb_model.pkl", "rb"))
+    tfidf = pickle.load(open("tfidf.pkl", "rb"))
+    emotion_map = pickle.load(open("emotions.pkl", "rb"))
+except Exception as e:
+    st.error(f"Error loading model files: {e}")
+    st.stop()
 
-# =========================
-# TEXT PREPROCESSING
-# =========================
+# ==========================================
+# PREPROCESSING
+# ==========================================
 
 stop_words = set(stopwords.words("english"))
 ps = PorterStemmer()
@@ -34,28 +48,34 @@ ps = PorterStemmer()
 def preprocess_text(text):
     text = text.lower()
 
+    # Remove numbers
     text = re.sub(r"\d+", "", text)
 
+    # Remove punctuation
     text = text.translate(
         str.maketrans("", "", string.punctuation)
     )
 
-    text = re.sub(r"\s+", " ", text)
+    # Remove extra spaces
+    text = re.sub(r"\s+", " ", text).strip()
 
+    # Tokenization
     tokens = text.split()
 
+    # Remove stopwords
     tokens = [
         word for word in tokens
         if word not in stop_words and len(word) > 1
     ]
 
+    # Stemming
     tokens = [ps.stem(word) for word in tokens]
 
     return " ".join(tokens)
 
-# =========================
-# HEADER
-# =========================
+# ==========================================
+# UI
+# ==========================================
 
 st.title("💜 EmotionScope")
 st.subheader("Reveal the feelings behind every word")
@@ -64,19 +84,41 @@ st.write(
     "Analyze text and identify the underlying emotion."
 )
 
-# =========================
-# INPUT
-# =========================
-
 text = st.text_area(
     "Enter Text",
     height=200,
     placeholder="Type your text here..."
 )
 
-# =========================
-# BUTTON
-# =========================
+# ==========================================
+# EMOJI MAP
+# ==========================================
+
+emoji_map = {
+    "joy": "😊",
+    "sadness": "😢",
+    "anger": "😠",
+    "love": "❤️",
+    "fear": "😨",
+    "surprise": "😲"
+}
+
+# ==========================================
+# DESCRIPTION MAP
+# ==========================================
+
+descriptions = {
+    "joy": "This text expresses happiness and positivity.",
+    "sadness": "This text reflects sadness or disappointment.",
+    "anger": "This text contains anger or frustration.",
+    "love": "This text expresses affection and care.",
+    "fear": "This text indicates fear or anxiety.",
+    "surprise": "This text shows surprise or shock."
+}
+
+# ==========================================
+# PREDICTION
+# ==========================================
 
 if st.button("🔍 Analyze Emotion", use_container_width=True):
 
@@ -84,56 +126,44 @@ if st.button("🔍 Analyze Emotion", use_container_width=True):
         st.warning("Please enter some text.")
         st.stop()
 
-    # PREPROCESS TEXT
-    clean_text = preprocess_text(text)
+    try:
+        # Same preprocessing used during training
+        clean_text = preprocess_text(text)
 
-    # TF-IDF
-    vector = tfidf.transform([clean_text])
+        # TF-IDF Transformation
+        vector = tfidf.transform([clean_text])
 
-    # PREDICTION
-    prediction = model.predict(vector)[0]
+        # Prediction
+        prediction = model.predict(vector)[0]
 
-    emotion = emotion_map[prediction]
+        # Convert label to emotion
+        emotion = emotion_map[prediction]
 
-    emoji_map = {
-        "joy": "😊",
-        "sadness": "😢",
-        "anger": "😠",
-        "love": "❤️",
-        "fear": "😨",
-        "surprise": "😲"
-    }
+        emoji = emoji_map.get(emotion.lower(), "✨")
 
-    emoji = emoji_map.get(emotion.lower(), "✨")
+        st.divider()
 
-    st.divider()
+        st.success("Analysis Completed")
 
-    st.success("Analysis Completed")
-
-    st.metric(
-        label="Detected Emotion",
-        value=f"{emoji} {emotion.upper()}"
-    )
-
-    descriptions = {
-        "joy": "This text expresses happiness and positivity.",
-        "sadness": "This text reflects sadness or disappointment.",
-        "anger": "This text contains anger or frustration.",
-        "love": "This text expresses affection and care.",
-        "fear": "This text indicates fear or anxiety.",
-        "surprise": "This text shows surprise or shock."
-    }
-
-    st.info(
-        descriptions.get(
-            emotion.lower(),
-            "Emotion detected successfully."
+        st.metric(
+            label="Detected Emotion",
+            value=f"{emoji} {emotion.upper()}"
         )
-    )
 
-    st.subheader("Submitted Text")
-    st.write(text)
+        st.info(
+            descriptions.get(
+                emotion.lower(),
+                "Emotion detected successfully."
+            )
+        )
 
-    # DEBUG (remove later)
-    st.write("Processed Text:", clean_text)
-    st.write("Prediction ID:", prediction)
+        st.subheader("Submitted Text")
+        st.write(text)
+
+        # DEBUG SECTION
+        with st.expander("Debug Info"):
+            st.write("Processed Text:", clean_text)
+            st.write("Prediction ID:", prediction)
+
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
