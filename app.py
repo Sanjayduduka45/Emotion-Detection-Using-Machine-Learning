@@ -4,10 +4,6 @@ import re
 import string
 import nltk
 
-# ==========================================
-# DOWNLOAD NLTK RESOURCES (STREAMLIT CLOUD)
-# ==========================================
-
 try:
     nltk.data.find("corpora/stopwords")
 except LookupError:
@@ -16,9 +12,9 @@ except LookupError:
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 
-# ==========================================
-# PAGE CONFIG
-# ==========================================
+
+# PAGE CONFIGURATION
+
 
 st.set_page_config(
     page_title="EmotionScope",
@@ -26,9 +22,9 @@ st.set_page_config(
     layout="centered"
 )
 
-# ==========================================
+
 # LOAD FILES
-# ==========================================
+
 
 try:
     model = pickle.load(open("xgb_model.pkl", "rb"))
@@ -38,9 +34,8 @@ except Exception as e:
     st.error(f"Error loading model files: {e}")
     st.stop()
 
-# ==========================================
 # PREPROCESSING
-# ==========================================
+
 
 stop_words = set(stopwords.words("english"))
 ps = PorterStemmer()
@@ -73,9 +68,8 @@ def preprocess_text(text):
 
     return " ".join(tokens)
 
-# ==========================================
 # UI
-# ==========================================
+
 
 st.title("💜 EmotionScope")
 st.subheader("Reveal the feelings behind every word")
@@ -90,9 +84,9 @@ text = st.text_area(
     placeholder="Type your text here..."
 )
 
-# ==========================================
+
 # EMOJI MAP
-# ==========================================
+
 
 emoji_map = {
     "joy": "😊",
@@ -103,9 +97,9 @@ emoji_map = {
     "surprise": "😲"
 }
 
-# ==========================================
+
 # DESCRIPTION MAP
-# ==========================================
+
 
 descriptions = {
     "joy": "This text expresses happiness and positivity.",
@@ -116,9 +110,9 @@ descriptions = {
     "surprise": "This text shows surprise or shock."
 }
 
-# ==========================================
+
 # PREDICTION
-# ==========================================
+
 
 if st.button("🔍 Analyze Emotion", use_container_width=True):
 

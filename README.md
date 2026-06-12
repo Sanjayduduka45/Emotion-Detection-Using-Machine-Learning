@@ -1,6 +1,6 @@
 # 🧠 Emotion Detection Using Machine Learning
 
-[![Streamlit App](https://img.shields.io/badge/Live%20Demo-Streamlit-red?style=for-the-badge\&logo=streamlit)](https://emotion-detection-using-machine-learning.streamlit.app)
+[![Streamlit App](https://emotion-detection-using-machine-learning.streamlit.app)
 
 ## 🌐 Live Demo
 
