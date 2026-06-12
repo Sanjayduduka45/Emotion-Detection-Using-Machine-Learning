@@ -1,5 +1,10 @@
 import streamlit as st
 import pickle
+import re
+import string
+
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 
 # =========================
 # PAGE CONFIG
@@ -18,6 +23,35 @@ st.set_page_config(
 model = pickle.load(open("xgb_model.pkl", "rb"))
 tfidf = pickle.load(open("tfidf.pkl", "rb"))
 emotion_map = pickle.load(open("emotions.pkl", "rb"))
+
+# =========================
+# TEXT PREPROCESSING
+# =========================
+
+stop_words = set(stopwords.words("english"))
+ps = PorterStemmer()
+
+def preprocess_text(text):
+    text = text.lower()
+
+    text = re.sub(r"\d+", "", text)
+
+    text = text.translate(
+        str.maketrans("", "", string.punctuation)
+    )
+
+    text = re.sub(r"\s+", " ", text)
+
+    tokens = text.split()
+
+    tokens = [
+        word for word in tokens
+        if word not in stop_words and len(word) > 1
+    ]
+
+    tokens = [ps.stem(word) for word in tokens]
+
+    return " ".join(tokens)
 
 # =========================
 # HEADER
@@ -50,12 +84,17 @@ if st.button("🔍 Analyze Emotion", use_container_width=True):
         st.warning("Please enter some text.")
         st.stop()
 
-    # Prediction
-    vector = tfidf.transform([text])
+    # PREPROCESS TEXT
+    clean_text = preprocess_text(text)
+
+    # TF-IDF
+    vector = tfidf.transform([clean_text])
+
+    # PREDICTION
     prediction = model.predict(vector)[0]
+
     emotion = emotion_map[prediction]
 
-    # Emojis
     emoji_map = {
         "joy": "😊",
         "sadness": "😢",
@@ -67,7 +106,6 @@ if st.button("🔍 Analyze Emotion", use_container_width=True):
 
     emoji = emoji_map.get(emotion.lower(), "✨")
 
-    # Results
     st.divider()
 
     st.success("Analysis Completed")
@@ -77,7 +115,6 @@ if st.button("🔍 Analyze Emotion", use_container_width=True):
         value=f"{emoji} {emotion.upper()}"
     )
 
-    # Optional Description
     descriptions = {
         "joy": "This text expresses happiness and positivity.",
         "sadness": "This text reflects sadness or disappointment.",
@@ -95,5 +132,8 @@ if st.button("🔍 Analyze Emotion", use_container_width=True):
     )
 
     st.subheader("Submitted Text")
-
     st.write(text)
+
+    # DEBUG (remove later)
+    st.write("Processed Text:", clean_text)
+    st.write("Prediction ID:", prediction)
